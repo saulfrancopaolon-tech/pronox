@@ -6,7 +6,7 @@ App web (instalable en Android) con picks, probabilidades, combinadas y soñador
 - public/index.html: la app
 - api/events.js: partidos, marcadores y probabilidades (ESPN, sin llave)
 - api/deep.js: análisis a fondo de fútbol (API-Football, requiere llave)
-- lib/: modelos y conectores
+- lib/: modelos y conectores (deep.js análisis, props.js tiros/córners/tarjetas)
 
 ## Llave para el análisis a fondo (opcional)
 1. Crea cuenta gratis en dashboard.api-football.com y copia tu API key.
