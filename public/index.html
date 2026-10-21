@@ -110,6 +110,7 @@ function playersTab(e,mode){
     mr(e,k+':05',p.name+' +0.5 tiros',p.shots.p05)+mr(e,k+':15',p.name+' +1.5 tiros',p.shots.p15)+mr(e,k+':sot',p.name+' tiro a puerta',p.sot.p05)+mr(e,k+':g',p.name+' anota gol',p.goal.p)
     :mr(e,k+':y',p.name+' tarjeta amarilla',p.card.p))+'</div></div>'}).join('')}).join('')}
 function tabHtml(e,t){
+ if(e.sport!='soccer'&&t!='main')return tabHtml2(e,t);
  if(t=='main')return '<h4>Ganador</h4>'+mk(e,'1')+mk(e,'X')+mk(e,'2')+(e.sport=='soccer'?'<h4>Gana o empata</h4>'+mk(e,'1X')+mk(e,'X2')+mk(e,'12')+'<h4>Empate no apuesta</h4>'+mk(e,'DNB1')+mk(e,'DNB2'):'')+`<div class="mu pad">Base: ${e.probSource=='mercado'?'momios de '+esc(e.book||'mercado')+' sin margen':'récords de temporada (sin momios)'}${e.venue?' · '+esc(e.venue):''}</div>`;
  if(t=='goals')return '<h4>Total de goles</h4>'+['1.5','2.5','3.5'].map(L=>mk(e,'O'+L)+mk(e,'U'+L)).join('')+'<h4>Ambos anotan</h4>'+mk(e,'BY')+mk(e,'BN');
  if(t=='shots')return playersTab(e,'shots');
@@ -118,6 +119,25 @@ function tabHtml(e,t){
  if(t=='corners'){const ds=deepState(e);if(ds)return ds;const C=S.deep[e.id].props.corners;
   return `<h4>Córners del partido (≈${C.lambda})</h4>`+linesRows(e,'kt','Más de',C.total,'córners')+`<h4>${esc(e.home.name)}</h4>`+linesRows(e,'kh','Más de',C.home,'córners')+`<h4>${esc(e.away.name)}</h4>`+linesRows(e,'ka','Más de',C.away,'córners')+`<div class="mu pad">${esc(C.note)}</div>`}
  if(t=='info'){const ds=deepState(e);if(ds)return ds;return info(e,S.deep[e.id])}}
+function tabHtml2(e,t){const ds=deepState(e);if(ds)return ds;const d=S.deep[e.id];if(d.sport!=e.sport)return '';
+ const rows=g=>d.markets.filter(m=>m.g==g).map(m=>mr(e,e.id+':'+m.k,m.n,m.p)).join('');
+ if(t=='totals')return `<h4>Total de ${d.unit} (esperado ≈${d.expected.total})</h4>`+rows('total');
+ if(t=='spread')return `<h4>Hándicap (margen esperado: ${esc(d.expected.margin>=0?e.home.name:e.away.name)} por ${Math.abs(d.expected.margin)})</h4>`+rows('spread');
+ if(t=='team')return `<h4>${esc(e.home.name)} (≈${d.expected.home})</h4>`+rows('teamH')+`<h4>${esc(e.away.name)} (≈${d.expected.away})</h4>`+rows('teamA');
+ if(t=='pitch'){const pr=rows('props');return d.pitchers.map(p=>`<div class="mu pad">${esc(p.name)} (${p.side=='home'?'local':'visita'}): ${p.era!=null?'ERA '+p.era+' · WHIP '+p.whip+' · ':''}${p.kps!=null?(+p.kps).toFixed(1)+' ponches por salida':'sin datos'}</div>`).join('')+(pr?'<h4>Ponches del lanzador</h4>'+pr:'<div class="mu pad">Lanzadores probables aún no confirmados.</div>')}
+ if(t=='info')return info2(e,d);return ''}
+function info2(e,d){const f=x=>(+x).toFixed(1),r=(n,a,b)=>`<tr><td>${n}</td><td>${a}</td><td>${b}</td></tr>`,H=d.inputs.home,A=d.inputs.away,w=d.weather;
+ const inj=s=>((d.injuries&&d.injuries[s])||[]).map(x=>esc(x.name)+' ('+esc(x.status)+')').join(', ')||'ninguna reportada',hr=x=>x==null?'–':Math.round(x);
+ return `<div class="row"><b>Análisis a fondo</b><span class="sp"></span><span class="q">datos ${d.quality}%</span></div>
+ <div class="mu">Esperado: ${esc(e.home.name)} ${d.expected.home} · ${esc(e.away.name)} ${d.expected.away} · total ${d.expected.total}</div>
+ <div class="mu">Probabilidad de ganar (modelo y mercado): ${esc(e.home.name)} ${pc(d.ml.h)} · ${esc(e.away.name)} ${pc(1-d.ml.h)}</div>
+ <table><tr><th>Factor</th><th>Local</th><th>Visita</th></tr>${r('A favor por partido',f(H.pf),f(A.pf))}${r('En contra por partido',f(H.pa),f(A.pa))}${r('Partidos jugados',H.gp,A.gp)}${r('Bajas (Out)',H.out,A.out)}${d.rest.home!=null||d.rest.away!=null?r('Horas de descanso',hr(d.rest.home),hr(d.rest.away)):''}</table>
+ ${d.notes.length?`<h4>Calendario</h4><div class="mu">${d.notes.map(esc).join(' · ')}</div>`:''}
+ ${d.injuries?`<h4>Bajas</h4><div class="mu">${esc(e.home.name)}: ${inj('home')}</div><div class="mu">${esc(e.away.name)}: ${inj('away')}</div>`:''}
+ ${w?`<h4>Clima</h4><div class="mu">${f(w.temp)} °C · lluvia ${w.rain} mm · viento ${f(w.wind)} km/h ${w.tags.length?'→ '+w.tags.join(', '):''}</div>`:''}
+ <h4>Fuentes usadas</h4><div class="mu">${d.sources.map(esc).join(' · ')}</div>
+ ${d.missing.length?`<div class="mu pad">Sin dato (valor neutral): ${esc(d.missing.join(', '))}</div>`:''}
+ <div class="mu pad">Modelo aproximado: no pondera estrellas ni alineaciones; las bajas se ajustan de forma simple.</div>`}
 function info(e,d){const I=d.inputs,H=I.home,A=I.away,w=d.weather,f=x=>(+x).toFixed(1),r=(n,a,b)=>`<tr><td>${n}</td><td>${a}</td><td>${b}</td></tr>`;
  return `<div class="row"><b>Análisis a fondo</b><span class="sp"></span><span class="q">datos ${d.quality}%</span></div><div class="mu">Goles esperados: ${esc(d.fixture.home)} ${d.lambdas.home} · ${esc(d.fixture.away)} ${d.lambdas.away}</div>
  <table><tr><th>Factor</th><th>Local</th><th>Visita</th></tr>${r('Goles a favor',f(H.xg),f(A.xg))}${r('Goles en contra',f(H.xga),f(A.xga))}${r('Forma (pts de 18)',f(H.form),f(A.form))}${r('Impacto de bajas (0-10)',f(H.abs),f(A.abs))}${r('Días de descanso',H.rest,A.rest)}${r('Motivación (1-5)',H.mot,A.mot)}</table>
@@ -128,7 +148,7 @@ function info(e,d){const I=d.inputs,H=I.home,A=I.away,w=d.weather,f=x=>(+x).toFi
  ${d.missing.length?`<div class="mu pad">Sin dato (valor neutral): ${esc(d.missing.join(', '))}</div>`:''}`}
 async function runDeep(id){
  const e=S.ev.find(x=>x.id==id);if(!e)return;S.deep[id]={loading:1};body();
- try{const r=await fetch(`/api/deep?home=${encodeURIComponent(e.home.name)}&away=${encodeURIComponent(e.away.name)}&start=${encodeURIComponent(e.start)}`);const j=await r.json();S.deep[id]=j.error?{error:j.error}:j}
+ try{const q=encodeURIComponent,u=e.sport=='soccer'?`/api/deep?home=${q(e.home.name)}&away=${q(e.away.name)}&start=${q(e.start)}`:`/api/deep2?sport=${e.sport}&hid=${e.home.id}&aid=${e.away.id}&home=${q(e.home.name)}&away=${q(e.away.name)}&start=${q(e.start)}&line=${e.line==null?'':e.line}&pml=${(find(e,'1')||{}).p||''}&src=${e.probSource}&indoor=${e.indoor?1:0}&city=${q(e.city||'')}`;const r=await fetch(u);const j=await r.json();S.deep[id]=j.error?{error:j.error}:j}
  catch(x){S.deep[id]={error:x.message}}
  body()}
 
@@ -136,9 +156,9 @@ function card(e){
  const live=e.state=='in',soc=e.sport=='soccer',open=S.open[e.id],tab=S.mt[e.id]||'main';
  const row=(t)=>`<div class="tm"><img src="${esc(t.logo)}" alt="" onerror="this.style.visibility='hidden'"><span>${esc(t.name)}<small>${esc(t.record)}</small></span></div>`;
  const odds=soc?`<div class="odds">${ob(e,'1','Local')}${ob(e,'X','Empate')}${ob(e,'2','Visita')}</div><div class="odds" style="margin-top:6px">${ob(e,'1X','Local o empate')}${ob(e,'12','Sin empate')}${ob(e,'X2','Visita o empate')}</div>`:`<div class="odds two">${ob(e,'1','Gana '+e.home.abbr)}${ob(e,'2','Gana '+e.away.abbr)}</div>`;
- const tabs=soc?[['main','Principales'],['goals','Goles'],['shots','Tiros'],['corners','Córners'],['cards','Tarjetas'],['info','Análisis']]:[['main','Principales']];
+ const tabs=soc?[['main','Principales'],['goals','Goles'],['shots','Tiros'],['corners','Córners'],['cards','Tarjetas'],['info','Análisis']]:[['main','Principales'],['totals','Totales'],['spread','Hándicap'],['team','Por equipo']].concat(e.sport=='mlb'?[['pitch','Pitchers']]:[],[['info','Análisis']]);
  const panel=open?`<div class="tabs">${tabs.map(t=>`<button class="tab ${tab==t[0]?'on':''}" data-tab="${e.id}|${t[0]}">${t[1]}</button>`).join('')}</div>${tabHtml(e,tab)}`:'';
- return `<div class="card ${live?'live':''}"><div class="head" data-toggle="${e.id}"><div class="tms">${row(e.home)}${row(e.away)}</div><div class="side"><div class="t">${live?'<i class="dot"></i>'+esc(e.detail):time(e)}</div>${live?`<div class="sc">${e.home.score??0}<br>${e.away.score??0}</div>`:''}</div></div>${odds}<button class="more" data-toggle="${e.id}">${open?'Ocultar mercados ▲':(soc?'Más mercados: tiros, córners, tarjetas ▼':'Más mercados ▼')}</button>${panel}</div>`}
+ return `<div class="card ${live?'live':''}"><div class="head" data-toggle="${e.id}"><div class="tms">${row(e.home)}${row(e.away)}</div><div class="side"><div class="t">${live?'<i class="dot"></i>'+esc(e.detail):time(e)}</div>${live?`<div class="sc">${e.home.score??0}<br>${e.away.score??0}</div>`:''}</div></div>${odds}<button class="more" data-toggle="${e.id}">${open?'Ocultar mercados ▲':(soc?'Más mercados: tiros, córners, tarjetas ▼':'Más mercados: totales, hándicap, análisis ▼')}</button>${panel}</div>`}
 function groups(list){const g={};list.forEach(e=>{(g[e.sport+'|'+e.league]=g[e.sport+'|'+e.league]||[]).push(e)});
  return Object.entries(g).map(([k,v])=>`<div class="lg">${ICON[v[0].sport]} ${esc(v[0].league)} <small>${v.length}</small></div>`+v.map(card).join('')).join('')}
 
@@ -175,8 +195,8 @@ function slipUI(){const n=S.slip.length,c=calc();
 document.addEventListener('input',e=>{if(e.target.id=='stk'){S.stake=+e.target.value||0;$('#pay').textContent=(S.stake*calc().cu).toFixed(0)}});
 document.addEventListener('click',e=>{const t=e.target,g=a=>t.closest('['+a+']');let x;
  if(x=g('data-add')){const d=x.dataset,i=S.slip.findIndex(s=>s.key==d.add);if(i>=0)S.slip.splice(i,1);else S.slip.push({key:d.add,l:d.l,m:d.m,p:+d.p,o:d.o?+d.o:null});body();return}
- if(x=g('data-toggle')){const id=x.dataset.toggle;S.open[id]=!S.open[id];const ev=S.ev.find(v=>v.id==id);body();if(S.open[id]&&ev&&ev.sport=='soccer'&&!S.deep[id])runDeep(id);return}
- if(x=g('data-tab')){const[id,tb]=x.dataset.tab.split('|');S.mt[id]=tb;const ev=S.ev.find(v=>v.id==id);if(ev&&ev.sport=='soccer'&&!S.deep[id])runDeep(id);else body();return}
+ if(x=g('data-toggle')){const id=x.dataset.toggle;S.open[id]=!S.open[id];const ev=S.ev.find(v=>v.id==id);body();if(S.open[id]&&ev&&!S.deep[id])runDeep(id);return}
+ if(x=g('data-tab')){const[id,tb]=x.dataset.tab.split('|');S.mt[id]=tb;const ev=S.ev.find(v=>v.id==id);if(ev&&!S.deep[id])runDeep(id);else body();return}
  if(x=g('data-deep')){runDeep(x.dataset.deep);return}
  if(x=g('data-s')){S.sport=x.dataset.s;chrome();load();return}
  if(x=g('data-d')){S.date=x.dataset.d;chrome();load();return}
